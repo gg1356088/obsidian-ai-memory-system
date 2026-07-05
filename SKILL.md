@@ -11,6 +11,7 @@
 | 发现值得沉淀的知识 | 按 `system/知识库规则.md` 分类 → 写入 Obsidian vault |
 | 用户说 `/learn` 或执行 gstack | 按 `system/gstack学习自动同步规则.md` 比对 Obsidian 错误库 |
 | 会话结束 | 更新 `system/当前状态.md`（如有） |
+| 对 Obsidian vault 做了任何修改（修复、新增、重构、批量改动等） | 必须执行完整的「收尾三步」：① 更新 `system/当前状态.md`（做了什么+决定+待办）→ ② 追加 vault 的 `日志/知识库日志.md`（时间+操作摘要）→ ③ 判断是否有方法论价值：有则创建 `日志/会话沉淀/YYYY-MM-DD 主题.md`（面向其他 AI 的操作文档），无则跳过。三步全部完成才算结束。见 `system/AI错误模式库.md` E011。 |
 | 用户犯错/指出错误 | 按 `system/AI错误模式库.md` 模板追加 E 条目 |
 | 操作不可逆或指令模糊 | 按 `system/AI协作准则.md` 反问机制处理 |
 
