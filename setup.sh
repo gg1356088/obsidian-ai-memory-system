@@ -12,7 +12,7 @@ echo "============================================"
 echo ""
 
 # ── 1. 检测安装目标 ──────────────────────────────────
-DEFAULT_VAULT="$HOME/obsidian知识内容库"
+DEFAULT_VAULT=""
 VAULT_PATH="${1:-$DEFAULT_VAULT}"
 
 echo "📍 Obsidian vault 路径：$VAULT_PATH"
@@ -39,7 +39,7 @@ else
 fi
 
 # ── 3. 复制系统文件到 Obsidian vault ─────────────────
-if [ -d "$VAULT_PATH" ]; then
+if [ -n "$VAULT_PATH" ] && [ -d "$VAULT_PATH" ]; then
     echo ""
     echo "📂 复制规则文件到 Obsidian vault..."
 
@@ -72,12 +72,19 @@ if [ -d "$VAULT_PATH" ]; then
     echo "   - $VAULT_PATH/模板/identity.md  ← 你是谁"
     echo "   - $VAULT_PATH/模板/user.md      ← 用户画像"
     echo "   - $VAULT_PATH/模板/soul.md       ← 价值观/风格"
+
+elif [ -z "$VAULT_PATH" ]; then
+    echo ""
+    echo "ℹ️  未提供 vault 路径，跳过 vault 文件复制。"
+    echo "   如需复制到 vault，运行："
+    echo "   bash setup.sh ~/你的obsidian-vault路径"
+
 else
     echo ""
     echo "⚠️  Obsidian vault 路径不存在：$VAULT_PATH"
     echo "   跳过文件复制。手动复制："
-    echo "   cp -r $SCRIPT_DIR/system $VAULT_PATH/系统/"
-    echo "   cp -r $SCRIPT_DIR/templates $VAULT_PATH/模板/"
+    echo "   cp -r $SCRIPT_DIR/system/* $VAULT_PATH/系统/"
+    echo "   cp -r $SCRIPT_DIR/templates/* $VAULT_PATH/模板/"
 fi
 
 # ── 4. 验证 ──────────────────────────────────────────
