@@ -38,37 +38,133 @@
 
 ## 五分钟上手
 
-### 方式 1：一键安装到 Claude Code
+### Claude Code（推荐安装为 Skill）
 
 ```bash
 git clone https://github.com/gg1356088/obsidian-ai-memory-system.git ~/.claude/skills/obsidian-ai-memory
 cd ~/.claude/skills/obsidian-ai-memory
-bash setup.sh
+bash setup.sh ~/你的obsidian-vault路径
 ```
 
-重启 Claude Code 后，AI 会自动读取 system/ 下的规则并执行。
+重启 Claude Code 后生效。AI 自动加载 `system/` 下的规则，`/learn` 自动触发 gstack→Obsidian 同步。
 
-### 方式 2：仅复制到 Obsidian vault
-
-```bash
-git clone https://github.com/gg1356088/obsidian-ai-memory-system.git /tmp/obsidian-ai-memory
-cp -r /tmp/obsidian-ai-memory/system /path/to/your-obsidian-vault/系统/
-cp -r /tmp/obsidian-ai-memory/templates /path/to/your-obsidian-vault/模板/
-```
-
-在你的项目 `CLAUDE.md` 或 `AGENTS.md` 中加一行：
+**手动方式（不安 skill）：** 在你的项目根目录 `CLAUDE.md` 中加一行：
 
 ```markdown
 读取并执行 `~/你的vault路径/系统/AI入口.md`
+读取并执行 `~/你的vault路径/系统/AI协作准则.md`
+读取并执行 `~/你的vault路径/系统/AI错误模式库.md`
 ```
 
-### 方式 3：零依赖（任何 AI 都能用）
+---
 
-不需要安装任何东西。告诉你的 AI：
+### Codex
 
-> 读取 `/path/to/vault/系统/AI入口.md`，按里面的路由表执行
+两种接入方式，按需选：
 
-所有系统文件都是纯 Markdown——AI 读到即执行，不依赖 SDK、API key、或特定工具。
+**A. 全局配置（推荐）** — 一次配置，所有 Codex 项目共享大脑：
+
+```bash
+# 1. 下载系统文件到 Obsidian vault
+git clone https://github.com/gg1356088/obsidian-ai-memory-system.git /tmp/obsidian-ai-memory
+cp -r /tmp/obsidian-ai-memory/system ~/你的obsidian-vault路径/系统/
+
+# 2. 写入 Codex 全局配置文件
+cat >> ~/.codex/AGENTS.md << 'EOF'
+
+## 🧠 共用大脑
+每次会话启动时：
+1. 读取 `~/你的obsidian-vault路径/系统/AI入口.md`，按路由表决定读哪些规则
+2. 扫描 `~/你的obsidian-vault路径/系统/AI错误模式库.md`，匹配当前任务的场景关键词
+3. 发现值得沉淀的知识 → 按 `~/你的obsidian-vault路径/系统/知识库规则.md` 写回 Obsidian
+EOF
+```
+
+**B. 单项目配置** — 在具体项目的 `AGENTS.md` 中引用：
+
+```markdown
+读取并执行 `~/你的vault路径/系统/AI入口.md`
+读取并执行 `~/你的vault路径/系统/AI错误模式库.md`
+写入规则：所有长期知识写入 Obsidian（`~/你的vault路径/`），不写入本项目目录
+```
+
+**验证：** 启动 Codex 新会话，问它 "请从我的 Obsidian 共用大脑加载规则"，看它能否读对文件。
+
+---
+
+### Hermes
+
+Hermes 通过 bash hooks 读取 Obsidian vault 中的规则。配置方法：
+
+**1. 下载系统文件：**
+
+```bash
+git clone https://github.com/gg1356088/obsidian-ai-memory-system.git /tmp/obsidian-ai-memory
+cp -r /tmp/obsidian-ai-memory/system ~/你的obsidian-vault路径/系统/
+```
+
+**2. 配置 session-start hook：**
+
+在 Hermes 的 `~/.hermes/config.yaml`（或项目根目录的 `.hermes.yaml`）中添加：
+
+```yaml
+hooks:
+  session_start:
+    - command: |
+        cat ~/你的obsidian-vault路径/系统/当前状态.md
+      description: "加载跨会话记忆"
+    - command: |
+        cat ~/你的obsidian-vault路径/系统/AI错误模式库.md
+      description: "加载错误预防规则"
+  task_start:
+    - command: |
+        cat ~/你的obsidian-vault路径/系统/AI入口.md
+      description: "按路由表精准加载规则"
+
+  session_end:
+    - command: |
+        echo "## 上一轮做了什么" > ~/你的obsidian-vault路径/系统/当前状态.md.tmp
+        echo "（请在此记录本轮关键产出和决策）" >> ~/你的obsidian-vault路径/系统/当前状态.md.tmp
+        mv ~/你的obsidian-vault路径/系统/当前状态.md.tmp ~/你的obsidian-vault路径/系统/当前状态.md
+      description: "更新跨会话状态"
+```
+
+**3. 配置 gstack→Obsidian 自动同步：**
+
+```yaml
+hooks:
+  post_task:
+    - command: |
+        LEARNINGS_FILE="$HOME/.gstack/projects/$(basename $(pwd))/learnings.jsonl"
+        if [ -f "$LEARNINGS_FILE" ]; then
+          echo "📋 gstack learnings 已更新，记得比对 Obsidian 错误模式库"
+          echo "   cat $LEARNINGS_FILE"
+          echo "   缺失条目追加到 系统/AI错误模式库.md"
+        fi
+      description: "提醒对比 gstack learnings"
+```
+
+**验证：** 启动 Hermes 新会话，看它是否自动 `cat` 了 Obsidian 状态文件和错误模式库。
+
+---
+
+### 零依赖（任意 AI 都能用）
+
+不依赖任何特定工具——只要 AI 能读文件就能用。
+
+告诉你的 AI：
+
+> 读取 `/path/to/vault/系统/AI入口.md`，按里面的路由表执行。所有系统文件都是纯 Markdown，读到即执行。
+
+| AI 工具 | 配置位置 | 加什么 |
+|---------|---------|--------|
+| **Claude Code** | `~/.claude/skills/` 或项目 `CLAUDE.md` | `读取 ~/vault/系统/AI入口.md` |
+| **Codex** | `~/.codex/AGENTS.md` 或项目 `AGENTS.md` | 同上 |
+| **Hermes** | `~/.hermes/config.yaml` hooks | `cat ~/vault/系统/` + 文件路径 |
+| **Cursor** | `.cursor/rules/` | 复制 `system/` 文件过去 |
+| **Gemini CLI** | 项目 `AGENTS.md` | `读取 ~/vault/系统/AI入口.md` |
+| **GitHub Copilot** | `.github/copilot-instructions.md` | 同上 |
+| **任意 CLI 类 AI** | 项目 `AGENTS.md` / `CLAUDE.md` | 同上 |
 
 ## 包含什么
 
@@ -90,17 +186,16 @@ cp -r /tmp/obsidian-ai-memory/templates /path/to/your-obsidian-vault/模板/
 | `templates/user.md` | 用户画像（空模板） | 填完后每次读取 |
 | `templates/soul.md` | 价值观/风格（空模板） | 填完后每次读取 |
 
-## 适用于哪些 AI
+## 各 AI 工具配置速查
 
-| AI 工具 | 如何使用 |
-|---------|---------|
-| **Claude Code** | 安装为 skill（方式 1）→ `/learn` 自动触发同步，system/ 规则自动加载 |
-| **Codex** | 方式 3 → `codex exec` 读取 system/ 文件并执行 |
-| **Hermes** | 方式 3 → bash 脚本读 JSONL + 写 Obsidian |
-| **Cursor** | 方式 2 → 复制到 vault，在 `.cursor/rules/` 中引用 |
-| **Gemini CLI** | 方式 3 → 在 AGENTS.md 引用 Obsidian 路径 |
-| **GitHub Copilot** | 方式 2 → 复制到 vault，在 `.github/copilot-instructions.md` 引用 |
-| **任意 CLI 类 AI** | 方式 3 → 能读文件就能用，零依赖 |
+| AI 工具 | 配置方式 | 核心能力 |
+|---------|---------|---------|
+| **Claude Code** | Skill 安装 → `sys-shared-brain` 自动加载 | `/learn` → gstack→Obsidian 自动同步 |
+| **Codex** | `~/.codex/AGENTS.md` 全局 or 项目 `AGENTS.md` | 零依赖——读到即执行 |
+| **Hermes** | `~/.hermes/config.yaml` hooks | Session-start / task-start / session-end hooks |
+| **Cursor** | `.cursor/rules/` 复制 system/ 文件 | 规则自动注入 |
+| **Gemini CLI** | 项目 `AGENTS.md` 引用 Obsidian 路径 | 零依赖——读到即执行 |
+| **GitHub Copilot** | `.github/copilot-instructions.md` | 零依赖——读到即执行 |
 
 ## 自进化循环
 
